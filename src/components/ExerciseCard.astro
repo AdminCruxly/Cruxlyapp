@@ -1,0 +1,140 @@
+---
+interface Props {
+    id?: string;
+    title: string;
+    description: string;
+    category: string;
+}
+
+const { id, title, description, category } = Astro.props;
+---
+
+<article class="exercise-card">
+    <div class="card-content">
+        <div class="card-header">
+            <h3 class="card-title">{title}</h3>
+            <span class="category-tag">{category}</span>
+        </div>
+        <p class="card-description">{description}</p>
+    </div>
+    <div class="card-actions">
+        {id && (
+            <a href={`/edit-exercise/${id}`} class="action-button edit">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar
+            </a>
+        )}
+        <button class="action-button delete" data-id={id}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="icon">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Eliminar
+        </button>
+    </div>
+</article>
+
+<style>
+    .exercise-card {
+        background: white;
+        border-radius: 1rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .exercise-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-content {
+        padding: 1.5rem;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0;
+        flex: 1;
+    }
+
+    .category-tag {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    .card-description {
+        color: var(--text-color);
+        opacity: 0.8;
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.5;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem 1.5rem;
+        background-color: var(--background-color);
+        border-top: 1px solid var(--border-color);
+    }
+
+    .action-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+        text-decoration: none;
+    }
+
+    .action-button.edit {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .action-button.edit:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .action-button.delete {
+        background-color: white;
+        color: var(--error-color);
+        border: 1px solid currentColor;
+    }
+
+    .action-button.delete:hover {
+        background-color: var(--error-color);
+        color: white;
+    }
+
+    .icon {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+</style>

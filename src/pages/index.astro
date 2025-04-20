@@ -1,0 +1,133 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Crusxly Admin">
+    <div class="dashboard">
+        <header class="dashboard-header">
+            <h1>Crusxly Admin</h1>
+            <p class="subtitle">Panel de Administración</p>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="card-grid">
+                <a href="/add-exercise" class="card">
+                    <div class="card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </div>
+                    <h2>Añadir Ejercicio</h2>
+                    <p>Crear un nuevo ejercicio en la biblioteca</p>
+                </a>
+
+                <a href="/exercise-list" class="card">
+                    <div class="card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                    </div>
+                    <h2>Lista de Ejercicios</h2>
+                    <p>Ver y gestionar ejercicios existentes</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<style>
+    .dashboard {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        color: var(--text-color);
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .subtitle {
+        font-size: 1.25rem;
+        color: var(--text-color);
+        opacity: 0.8;
+        margin-top: 0.5rem;
+    }
+
+    .dashboard-content {
+        padding: 2rem;
+    }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        text-decoration: none;
+        color: var(--text-color);
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-color: var(--primary-color);
+    }
+
+    .card-icon {
+        width: 3rem;
+        height: 3rem;
+        margin: 0 auto 1.5rem;
+        color: var(--primary-color);
+    }
+
+    .card h2 {
+        font-size: 1.5rem;
+        margin: 0 0 0.5rem;
+        color: var(--text-color);
+    }
+
+    .card p {
+        font-size: 1rem;
+        margin: 0;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    @media (max-width: 640px) {
+        .dashboard {
+            padding: 1rem;
+        }
+
+        .dashboard-header {
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+        }
+
+        .card-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
+</style>
+</BaseLayout>

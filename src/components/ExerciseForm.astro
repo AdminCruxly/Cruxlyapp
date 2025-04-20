@@ -1,0 +1,228 @@
+---
+import TagInput from './TagInput.astro';
+import type { Exercise } from '../types/Exercise';
+
+interface Props {
+    exercise?: Exercise;
+    isEditing?: boolean;
+}
+
+const { exercise, isEditing = false } = Astro.props;
+---
+
+<form id="mainForm" class="form-container">
+    {isEditing && (
+        <input type="hidden" name="id" value={exercise?.id} />
+    )}
+    
+    <div class="input-group">
+        <label for="title">Título</label>
+        <input 
+            type="text" 
+            id="title" 
+            name="title"
+            placeholder="Ingresa el título"
+            value={exercise?.title}
+            required
+        />
+    </div>
+
+    <div class="input-group">
+        <label for="description">Descripción</label>
+        <textarea 
+            id="description" 
+            name="description"
+            placeholder="Ingresa la descripción"
+            required
+        >{exercise?.description}</textarea>
+    </div>
+
+    <div class="input-group">
+        <label for="category">Categoría</label>
+        <input 
+            type="text" 
+            id="category" 
+            name="category" 
+            placeholder="Ingresa la categoría"
+            value={exercise?.category}
+            required
+        />
+    </div>
+
+    <div class="input-group">
+        <label for="subcategory">Subcategoría</label>
+        <input 
+            type="text" 
+            id="subcategory" 
+            name="subcategory" 
+            placeholder="Ingresa la subcategoría (opcional)"
+            value={exercise?.subcategory}
+        />
+    </div>
+
+    <TagInput material={exercise?.material} />
+
+    <div class="form-row">
+        <div class="input-group half">
+            <label for="duration">Duración (min)</label>
+            <input 
+                type="number" 
+                id="duration" 
+                name="duration" 
+                placeholder="Duración en minutos"
+                min="0"
+                value={exercise?.duration}
+            />
+        </div>
+
+        <div class="input-group half">
+            <label for="series">Número de Series</label>
+            <input 
+                type="number" 
+                id="series" 
+                name="series" 
+                placeholder="Número de series"
+                min="0"
+                value={exercise?.series}
+            />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="input-group half">
+            <label for="restTime">Descanso</label>
+            <input 
+                type="text" 
+                id="restTime" 
+                name="restTime" 
+                placeholder="Tiempo de descanso"
+                value={exercise?.restTime}
+            />
+        </div>
+
+        <div class="input-group half">
+            <label for="repetitions">Nº de repeticiones</label>
+            <input 
+                type="number" 
+                id="repetitions" 
+                name="repetitions" 
+                placeholder="Número de repeticiones"
+                min="0"
+                value={exercise?.repetitions}
+            />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="input-group half">
+            <label for="repetitionTime">Tiempo de repeticiones</label>
+            <input 
+                type="text" 
+                id="repetitionTime" 
+                name="repetitionTime" 
+                placeholder="Tiempo por repetición"
+                value={exercise?.repetitionTime}
+            />
+        </div>
+
+        <div class="input-group half">
+            <label for="level">Nivel</label>
+            <select id="level" name="level" required>
+                <option value="">Selecciona un nivel</option>
+                <option value="beginner" selected={exercise?.level === 'beginner'}>Principiante</option>
+                <option value="intermediate" selected={exercise?.level === 'intermediate'}>Intermedio</option>
+                <option value="advanced" selected={exercise?.level === 'advanced'}>Avanzado</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="input-group checkbox-group">
+        <label class="checkbox-container">
+            <input 
+                type="checkbox" 
+                id="isVisible" 
+                name="isVisible"
+                checked={exercise?.isVisible}
+            />
+            <span class="checkbox-label">Visible en biblioteca</span>
+        </label>
+    </div>
+
+    <button type="submit" class="submit-btn">
+        {isEditing ? 'Actualizar' : 'Guardar'}
+    </button>
+</form>
+
+<script>
+    import { saveExercise } from '../services/exerciseService';
+    import type { Exercise } from '../types/Exercise';
+
+    const form = document.getElementById('mainForm') as HTMLFormElement;
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        try {
+            const formData = new FormData(form);
+            const formEntries = Object.fromEntries(formData);
+            
+            // Crear el objeto base sin ID
+            const baseExerciseData: Partial<Exercise> = {
+                title: formEntries.title as string,
+                description: formEntries.description as string,
+                category: formEntries.category as string,
+                subcategory: (formEntries.subcategory as string) || null,
+                duration: formEntries.duration ? parseInt(formEntries.duration as string) : null,
+                series: formEntries.series ? parseInt(formEntries.series as string) : null,
+                repetitions: formEntries.repetitions ? parseInt(formEntries.repetitions as string) : null,
+                restTime: (formEntries.restTime as string) || null,
+                repetitionTime: (formEntries.repetitionTime as string) || null,
+                level: formEntries.level as 'beginner' | 'intermediate' | 'advanced',
+                isVisible: formData.has('isVisible'),
+                material: formEntries.material ? JSON.parse(formEntries.material as string) : []
+            };
+
+            // Añadir el ID solo si existe
+            const exerciseData: Partial<Exercise> = formEntries.id
+                ? { ...baseExerciseData, id: formEntries.id as string }
+                : baseExerciseData;
+
+            const id = await saveExercise(exerciseData as Exercise);
+            
+            if (id) {
+                window.location.href = '/';
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                console.error('Error al guardar el ejercicio:', error.message);
+                alert(`Error al guardar el ejercicio: ${error.message}`);
+            } else {
+                console.error('Error desconocido al guardar el ejercicio');
+                alert('Error desconocido al guardar el ejercicio');
+            }
+        }
+    });
+</script>
+
+<style>
+    .submit-btn {
+        width: 100%;
+        padding: 0.75rem;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .submit-btn:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+</style>

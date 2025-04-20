@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ExerciseForm from '../components/ExerciseForm.astro';
+---
+
+<BaseLayout title="Añadir Ejercicio - Crusxly Admin">
+    <div class="container">
+        <header class="page-header">
+            <h1>Añadir Ejercicio</h1>
+            <a href="/" class="back-button">
+                <span>←</span> Volver
+            </a>
+        </header>
+        <ExerciseForm />
+    </div>
+</BaseLayout>
+
+<style>
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        color: var(--text-color);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .back-button:hover {
+        background-color: var(--border-color);
+    }
+</style>

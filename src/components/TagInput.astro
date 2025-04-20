@@ -1,0 +1,264 @@
+---
+interface Props {
+    material?: string[];    
+    maxLength?: number;
+}
+
+const { 
+    material = [], 
+    maxLength = 30
+} = Astro.props;
+
+// Sanitize initial tags
+const sanitizedMaterial = material
+    .map(tag => tag.trim())
+    .filter(tag => tag.length > 0 && tag.length <= maxLength)
+    .filter((tag, index, self) => 
+        self.findIndex(t => t.toLowerCase() === tag.toLowerCase()) === index
+    );
+---
+
+<div class="tag-input-container">
+    <label for="tagInput">Material necesario</label>
+    <input 
+        type="hidden" 
+        id="tagsInput" 
+        name="material" 
+        value={JSON.stringify(sanitizedMaterial)}
+        aria-hidden="true"
+    />
+    <div 
+        class="tag-input-wrapper"
+        role="group"
+        aria-labelledby="tagInputLabel"
+    >
+        <div 
+            class="tags-container" 
+            id="tagsContainer"
+            aria-live="polite"
+        >
+            {sanitizedMaterial.map(tag => (
+                <span 
+                    class="tag" 
+                    data-tag={tag}
+                    role="listitem"
+                >
+                    {tag}
+                    <button 
+                        type="button"
+                        class="tag-remove"
+                        aria-label={`Eliminar etiqueta ${tag}`}
+                        title={`Eliminar etiqueta ${tag}`}
+                    >
+                        &times;
+                    </button>
+                </span>
+            ))}
+        </div>
+        <input
+            type="text"
+            id="tagInput"
+            placeholder="Escribe el material necesario y presiona Enter"
+            maxlength={maxLength}
+            aria-label="Añadir material"
+            data-max-length={maxLength}
+        />
+    </div>
+    <div class="tag-help-text" id="tagHelpText">
+        Presiona Enter para añadir cada material
+    </div>
+    <div class="error-message" id="tagError" role="alert"></div>
+</div>
+
+<style>
+    .tag-input-container {
+        width: 100%;
+    }
+
+    .tag-input-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        background: var(--background-color);
+    }
+
+    .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        animation: fadeIn 0.2s ease-in-out;
+    }
+
+    #tagInput {
+        flex: 1;
+        min-width: 150px;
+        border: none;
+        outline: none;
+        font-size: 0.875rem;
+        background: transparent;
+        color: var(--text-color);
+    }
+
+    .tag-remove {
+        background: none;
+        border: none;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        font-size: 1.2rem;
+        color: white;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+        cursor: pointer;
+    }
+
+    .tag-remove:hover {
+        opacity: 1;
+    }
+
+    .tag-remove:focus {
+        outline: 2px solid white;
+        border-radius: 50%;
+    }
+
+    .tag-help-text {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+    }
+
+    .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        min-height: 1.25rem;
+    }
+
+    .tag-input-wrapper.error {
+        border-color: #dc2626;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 640px) {
+        .tag-input-wrapper {
+            padding: 0.375rem;
+        }
+
+        .tag {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+        }
+    }
+</style>
+
+<script>
+    const tagsContainer = document.getElementById('tagsContainer') as HTMLDivElement;
+    const tagInput = document.getElementById('tagInput') as HTMLInputElement;
+    const tagsHiddenInput = document.getElementById('tagsInput') as HTMLInputElement;
+    const tagError = document.getElementById('tagError') as HTMLDivElement;
+    const maxLength = tagInput.dataset.maxLength ? parseInt(tagInput.dataset.maxLength) : 30;
+
+    function getCurrentTags(): string[] {
+        return Array.from(tagsContainer.querySelectorAll('.tag')).map(tag => 
+            (tag as HTMLElement).dataset.tag || ''
+        ).filter(tag => tag !== '');
+    }
+
+    function updateHiddenInput(tags: string[]): void {
+        tagsHiddenInput.value = JSON.stringify(tags);
+    }
+
+    function addTag(tagText: string): boolean {
+        const sanitizedTag = tagText.trim();
+        if (!sanitizedTag) return false;
+
+        // Validar longitud
+        if (sanitizedTag.length > maxLength) {
+            tagError.textContent = `El texto no puede exceder los ${maxLength} caracteres`;
+            return false;
+        }
+
+        // Verificar si ya existe (case insensitive)
+        const currentTags = getCurrentTags();
+        if (currentTags.some(tag => tag.toLowerCase() === sanitizedTag.toLowerCase())) {
+            tagError.textContent = 'Este material ya está en la lista';
+            return false;
+        }
+
+        // Crear elemento tag
+        const tagElement = document.createElement('span');
+        tagElement.className = 'tag';
+        tagElement.dataset.tag = sanitizedTag;
+        tagElement.setAttribute('role', 'listitem');
+        
+        tagElement.innerHTML = `
+            ${sanitizedTag}
+            <button 
+                type="button"
+                class="tag-remove"
+                aria-label="Eliminar etiqueta ${sanitizedTag}"
+                title="Eliminar etiqueta ${sanitizedTag}"
+            >&times;</button>
+        `;
+
+        // Añadir el nuevo tag
+        tagsContainer.appendChild(tagElement);
+        
+        // Actualizar input oculto
+        updateHiddenInput([...currentTags, sanitizedTag]);
+        
+        tagError.textContent = '';
+        return true;
+    }
+
+    // Manejar entrada de nuevos tags
+    tagInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const success = addTag(tagInput.value);
+            if (success) {
+                tagInput.value = '';
+            }
+        }
+    });
+
+    // Manejar eliminación de tags
+    tagsContainer.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('tag-remove')) {
+            const tagElement = target.closest('.tag');
+            if (tagElement) {
+                tagElement.remove();
+                updateHiddenInput(getCurrentTags());
+            }
+        }
+    });
+</script>

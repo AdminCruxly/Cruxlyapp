@@ -1,0 +1,171 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ExerciseCard from '../components/ExerciseCard.astro';
+import { getAllExercises } from '../services/exerciseService';
+
+const exercises = await getAllExercises();
+---
+
+<BaseLayout title="Lista de Ejercicios - Crusxly Admin">
+    <div class="container">
+        <header class="page-header">
+            <div class="header-content">
+                <h1>Lista de Ejercicios</h1>
+                <a href="/add-exercise" class="add-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Añadir Ejercicio
+                </a>
+            </div>
+            <a href="/" class="back-button">
+                <span>←</span> Volver
+            </a>
+        </header>
+
+        {exercises.length === 0 ? (
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+                <h2>No hay ejercicios</h2>
+                <p>Comienza añadiendo tu primer ejercicio</p>
+                <a href="/add-exercise" class="add-button">Añadir Ejercicio</a>
+            </div>
+        ) : (
+            <div class="exercise-grid">
+                {exercises
+                    .sort((a, b) => a.title.localeCompare(b.title))
+                    .map((exercise) => (
+                    <ExerciseCard
+                        id={exercise.id}
+                        title={exercise.title}
+                        description={exercise.description}
+                        category={exercise.category}
+                    />
+                ))}
+            </div>
+        )}
+    </div>
+</BaseLayout>
+
+<style>
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        color: var(--text-color);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+    }
+
+    .back-button:hover {
+        background-color: var(--border-color);
+    }
+
+    .add-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .add-button:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .add-button svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .exercise-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .empty-state svg {
+        width: 4rem;
+        height: 4rem;
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .empty-state h2 {
+        font-size: 1.5rem;
+        color: var(--text-color);
+        margin: 0 0 0.5rem;
+    }
+
+    .empty-state p {
+        color: var(--text-color);
+        opacity: 0.8;
+        margin: 0 0 2rem;
+    }
+
+    @media (max-width: 640px) {
+        .container {
+            padding: 1rem;
+        }
+
+        .exercise-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .add-button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
