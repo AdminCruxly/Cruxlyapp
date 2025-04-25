@@ -139,14 +139,22 @@ const { exercise, isEditing = false } = Astro.props;
 
     <div class="form-row">
         <div class="input-group half">
-            <label for="level">Nivel</label>
-            <select id="level" name="level" required>
-                <option value="">Selecciona un nivel</option>
-                <option value="beginner" selected={exercise?.level === 'beginner'}>Básico</option>
-                <option value="intermediate" selected={exercise?.level === 'intermediate'}>Intermedio</option>
-                <option value="advanced" selected={exercise?.level === 'advanced'}>Avanzado</option>
-                <option value="all" selected={exercise?.level === 'all'}>Todos los niveles</option>
-            </select>
+            <label>Nivel</label>
+            <div class="level-checkboxes">
+                <label class="level-option">
+                    <input type="checkbox" name="level" value="beginner" checked={exercise?.level?.includes('beginner')} />
+                    <span>Básico</span>
+                </label>
+                <label class="level-option">
+                    <input type="checkbox" name="level" value="intermediate" checked={exercise?.level?.includes('intermediate')} />
+                    <span>Intermedio</span>
+                </label>
+                <label class="level-option">
+                    <input type="checkbox" name="level" value="advanced" checked={exercise?.level?.includes('advanced')} />
+                    <span>Avanzado</span>
+                </label>
+            </div>
+            <small id="levelValidation" class="validation-message">Selecciona al menos un nivel</small>
         </div>
     </div>
 
@@ -167,14 +175,79 @@ const { exercise, isEditing = false } = Astro.props;
     </button>
 </form>
 
+<style>
+    .level-checkboxes {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+        background-color: #f9f9f9;
+    }
+
+    .level-option {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .level-option:hover {
+        background-color: #e9e9e9;
+    }
+
+    .level-option input[type="checkbox"] {
+        margin-right: 10px;
+    }
+
+    .level-option span {
+        flex: 1;
+    }
+
+    .validation-message {
+        color: #d32f2f;
+        font-size: 0.8rem;
+        margin-top: 4px;
+        display: none;
+    }
+</style>
+
 <script>
     import { saveExercise } from '../services/exerciseService';
     import type { Exercise } from '../types/Exercise';
 
     const form = document.getElementById('mainForm') as HTMLFormElement;
+    const levelCheckboxes = document.querySelectorAll('input[name="level"]');
+    const levelValidation = document.getElementById('levelValidation');
+    
+    // Función para validar que al menos un nivel esté seleccionado
+    function validateLevelSelection() {
+        const anyChecked = Array.from(levelCheckboxes).some(checkbox => (checkbox as HTMLInputElement).checked);
+        if (levelValidation) {
+            levelValidation.style.display = anyChecked ? 'none' : 'block';
+        }
+        return anyChecked;
+    }
+    
+    // Añadir evento de cambio a cada checkbox para validación en tiempo real
+    levelCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', validateLevelSelection);
+    });
+    
+    // Validar al cargar la página
+    validateLevelSelection();
     
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Validar que al menos un nivel esté seleccionado
+        if (!validateLevelSelection()) {
+            return; // Detener el envío si no hay niveles seleccionados
+        }
         
         try {
             const formData = new FormData(form);
@@ -192,7 +265,7 @@ const { exercise, isEditing = false } = Astro.props;
                 seriesRestTime: (formEntries.seriesRestTime as string) || null,
                 repetitionsRestTime: (formEntries.repetitionsRestTime as string) || null,
                 repetitionTime: (formEntries.repetitionTime as string) || null,
-                level: formEntries.level as 'beginner' | 'intermediate' | 'advanced',
+                level: Array.from(formData.getAll('level')) as ('beginner' | 'intermediate' | 'advanced')[],
                 isVisible: formData.has('isVisible'),
                 material: formEntries.material ? JSON.parse(formEntries.material as string) : []
             };

@@ -11,6 +11,6 @@ export interface Exercise {
     repetitionsRestTime: string | null;
     repetitions: number | null;
     repetitionTime: string | null;
-    level: 'beginner' | 'intermediate' | 'advanced' | 'all';
+    level: ('beginner' | 'intermediate' | 'advanced')[];
     isVisible: boolean;
 }
