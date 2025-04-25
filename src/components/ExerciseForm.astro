@@ -90,13 +90,13 @@ const { exercise, isEditing = false } = Astro.props;
 
     <div class="form-row">
         <div class="input-group half">
-            <label for="restTime">Descanso</label>
+            <label for="seriesRestTime">Descanso entre series</label>
             <input 
                 type="text" 
-                id="restTime" 
-                name="restTime" 
-                placeholder="Tiempo de descanso"
-                value={exercise?.restTime}
+                id="seriesRestTime" 
+                name="seriesRestTime" 
+                placeholder="Tiempo de descanso entre series"
+                value={exercise?.seriesRestTime}
             />
         </div>
 
@@ -125,6 +125,19 @@ const { exercise, isEditing = false } = Astro.props;
             />
         </div>
 
+        <div class="input-group half">
+            <label for="repetitionsRestTime">Descanso entre repeticiones</label>
+            <input 
+                type="text" 
+                id="repetitionsRestTime" 
+                name="repetitionsRestTime" 
+                placeholder="Tiempo de descanso entre repeticiones"
+                value={exercise?.repetitionsRestTime}
+            />
+        </div>
+    </div>
+
+    <div class="form-row">
         <div class="input-group half">
             <label for="level">Nivel</label>
             <select id="level" name="level" required>
@@ -176,7 +189,8 @@ const { exercise, isEditing = false } = Astro.props;
                 duration: formEntries.duration ? parseInt(formEntries.duration as string) : null,
                 series: formEntries.series ? parseInt(formEntries.series as string) : null,
                 repetitions: formEntries.repetitions ? parseInt(formEntries.repetitions as string) : null,
-                restTime: (formEntries.restTime as string) || null,
+                seriesRestTime: (formEntries.seriesRestTime as string) || null,
+                repetitionsRestTime: (formEntries.repetitionsRestTime as string) || null,
                 repetitionTime: (formEntries.repetitionTime as string) || null,
                 level: formEntries.level as 'beginner' | 'intermediate' | 'advanced',
                 isVisible: formData.has('isVisible'),

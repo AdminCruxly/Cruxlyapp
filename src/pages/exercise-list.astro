@@ -57,7 +57,60 @@ const sortedExercises = [...exercises].sort((a, b) =>
 
 <script>
     import { deleteExercise, subscribeToExercises } from '../services/exerciseService';
-    import type { Exercise } from '../types/Exercise';
+    import type { Exercise } from '../types/Exercise';    
+    
+    // Extender el objeto Window para incluir nuestra propiedad personalizada
+    declare global {
+        interface Window {
+            reloadTimeout?: ReturnType<typeof setTimeout>;
+            lastKnownUpdateTimes?: Record<string, number>;
+        }
+    }    
+    
+    // Asegurarnos de que el tipo Exercise incluya metadata
+    interface ExerciseWithMetadata extends Exercise {
+        metadata?: {
+            updated_at?: number | string | {
+                seconds: number;
+                nanoseconds: number;
+            };
+            [key: string]: any;
+        };
+    }
+    
+    // Función para convertir cualquier formato de timestamp a milisegundos
+    function convertToTimestamp(updatedAt: any): number {
+        // Si es un número, asumimos que ya es un timestamp en milisegundos
+        if (typeof updatedAt === 'number') {
+            return updatedAt;
+        }
+        
+        // Si es un string, intentamos convertirlo a fecha
+        if (typeof updatedAt === 'string') {
+            const date = new Date(updatedAt);
+            // Verificar que la fecha es válida
+            if (!isNaN(date.getTime())) {
+                return date.getTime();
+            }
+            console.log(`Fecha inválida desde string: ${updatedAt}`);
+            return NaN;
+        }
+        
+        // Si es un objeto Timestamp de Firebase (tiene seconds y nanoseconds)
+        if (updatedAt && typeof updatedAt === 'object' && 'seconds' in updatedAt && 'nanoseconds' in updatedAt) {
+            // Convertir seconds a milisegundos y añadir nanoseconds convertidos a milisegundos
+            return updatedAt.seconds * 1000 + Math.floor(updatedAt.nanoseconds / 1000000);
+        }
+        
+        // Si es un objeto Date
+        if (updatedAt instanceof Date) {
+            return updatedAt.getTime();
+        }
+        
+        // Si no podemos determinar el tipo, devolvemos NaN
+        console.log(`Formato de timestamp no reconocido: ${JSON.stringify(updatedAt)}`);
+        return NaN;
+    }
     
     // Configurar los botones de eliminar
     function setupDeleteButtons(): void {
@@ -84,13 +137,166 @@ const sortedExercises = [...exercises].sort((a, b) =>
         });
     }
     
+    // Inicializar el almacenamiento de timestamps
+    if (typeof window !== 'undefined') {
+        window.lastKnownUpdateTimes = window.lastKnownUpdateTimes || {};
+    }
+    
+    // Almacenar la última vez que se cargó la página
+    const pageLoadTime = new Date().getTime();
+    
     // Función para actualizar la UI con los nuevos ejercicios
-    function updateExerciseList(exercises: Exercise[]): void {
-        // Solo actualizar si hay cambios significativos
-        // Esta implementación básica evita recargas constantes
-        console.log('Cambios detectados en los ejercicios');
-        // Aquí podrías implementar una actualización más sofisticada
-        // sin necesidad de recargar la página
+    function updateExerciseList(exercises: ExerciseWithMetadata[]): void {
+        console.log(`Recibidos ${exercises.length} ejercicios para actualizar`);
+        
+        // Imprimir información de metadatos para depuración
+        exercises.forEach(exercise => {
+            if (exercise.id && exercise.metadata?.updated_at) {
+                const updatedAt = exercise.metadata.updated_at;
+                try {
+                    const timestamp = convertToTimestamp(updatedAt);
+                    
+                    // Validar que el timestamp es un número válido y está dentro del rango permitido
+                    if (!isNaN(timestamp) && isFinite(timestamp) && timestamp > 0) {
+                        const date = new Date(timestamp);
+                        // Mostrar tanto la hora UTC (toISOString) como la hora local
+                        console.log(`Ejercicio ${exercise.id}: updated_at = ${date.toISOString()} (UTC) / ${date.toLocaleString()} (hora local)`);
+                    } else {
+                        console.log(`Ejercicio ${exercise.id}: updated_at inválido = ${JSON.stringify(updatedAt)}`);
+                    }
+                } catch (error) {
+                    console.log(`Ejercicio ${exercise.id}: Error al procesar updated_at = ${JSON.stringify(updatedAt)}`, error);
+                }
+            } else if (exercise.id) {
+                console.log(`Ejercicio ${exercise.id}: No tiene metadata.updated_at`);
+            }
+        });
+        
+        // Obtener los IDs de los ejercicios actuales en el DOM
+        const currentExerciseIds = Array.from(
+            document.querySelectorAll('.action-button.delete')
+        ).map(button => button.getAttribute('data-id')).filter(id => id !== null) as string[];
+        
+        // Obtener los IDs de los ejercicios recibidos
+        const newExerciseIds = exercises.map(exercise => exercise.id).filter(id => id !== undefined) as string[];
+        
+        // Comprobar si hay diferencias en los IDs (ejercicios añadidos o eliminados)
+        const hasNewExercises = newExerciseIds.some(id => !currentExerciseIds.includes(id));
+        const hasRemovedExercises = currentExerciseIds.some(id => !newExerciseIds.includes(id));
+        
+        // Comprobar si hay ejercicios actualizados después de cargar la página
+        let hasUpdatedExercises = false;
+        
+        // Cargar timestamps guardados desde localStorage
+        const storedUpdateTimes = localStorage.getItem('exerciseUpdateTimes');
+        if (storedUpdateTimes && !window.lastKnownUpdateTimes) {
+            try {
+                window.lastKnownUpdateTimes = JSON.parse(storedUpdateTimes);
+                console.log('Cargados timestamps de actualización desde localStorage:', window.lastKnownUpdateTimes);
+            } catch (e) {
+                console.error('Error al cargar timestamps desde localStorage:', e);
+                window.lastKnownUpdateTimes = {};
+            }
+        }
+        
+        // Obtener la última vez que se actualizó la página desde localStorage
+        const lastPageUpdate = localStorage.getItem('lastPageUpdate');
+        const lastPageUpdateTime = lastPageUpdate ? parseInt(lastPageUpdate, 10) : 0;
+        
+        for (const exercise of exercises) {
+            if (!exercise.id) continue;
+            
+            // Obtener el timestamp de actualización del ejercicio
+            const updatedAt = exercise.metadata?.updated_at;
+            
+            if (updatedAt) {
+                // Convertir a timestamp si es necesario
+                let updateTimestamp;
+                try {
+                    updateTimestamp = convertToTimestamp(updatedAt);
+                    
+                    // Validar que el timestamp es un número válido
+                    if (isNaN(updateTimestamp) || !isFinite(updateTimestamp) || updateTimestamp <= 0) {
+                        console.log(`Ejercicio ${exercise.id}: timestamp inválido = ${JSON.stringify(updatedAt)}`);
+                        continue;
+                    }
+                } catch (error) {
+                    console.log(`Ejercicio ${exercise.id}: Error al procesar timestamp = ${JSON.stringify(updatedAt)}`, error);
+                    continue;
+                }
+                
+                // Si es la primera vez que vemos este ejercicio, guardar su timestamp
+                if (!window.lastKnownUpdateTimes?.[exercise.id]) {
+                    if (window.lastKnownUpdateTimes) {
+                        window.lastKnownUpdateTimes[exercise.id] = updateTimestamp;
+                        // Guardar en localStorage
+                        localStorage.setItem('exerciseUpdateTimes', JSON.stringify(window.lastKnownUpdateTimes));
+                    }
+                    continue;
+                }
+                
+                // Comprobar si el ejercicio ha sido actualizado desde la última vez
+                if (window.lastKnownUpdateTimes && updateTimestamp > window.lastKnownUpdateTimes[exercise.id]) {
+                    try {
+                        const newDate = new Date(updateTimestamp);
+                        const oldDate = new Date(window.lastKnownUpdateTimes[exercise.id]);
+                        console.log(`Ejercicio ${exercise.id} actualizado: ${newDate.toISOString()} (UTC) / ${newDate.toLocaleString()} (hora local)`);
+                        console.log(`Timestamp anterior: ${oldDate.toISOString()} (UTC) / ${oldDate.toLocaleString()} (hora local)`);
+                        console.log(`Diferencia: ${updateTimestamp - window.lastKnownUpdateTimes[exercise.id]} ms`);
+                        window.lastKnownUpdateTimes[exercise.id] = updateTimestamp;
+                        // Guardar en localStorage
+                        localStorage.setItem('exerciseUpdateTimes', JSON.stringify(window.lastKnownUpdateTimes));
+                        hasUpdatedExercises = true;
+                    } catch (err) {
+                        console.log(`Error al mostrar información de actualización para ejercicio ${exercise.id}:`, err);
+                    }
+                } else if (window.lastKnownUpdateTimes) {
+                    // Actualizar el timestamp aunque no haya cambios para mantener el registro actualizado
+                    window.lastKnownUpdateTimes[exercise.id] = updateTimestamp;
+                    // Guardar en localStorage
+                    localStorage.setItem('exerciseUpdateTimes', JSON.stringify(window.lastKnownUpdateTimes));
+                }
+                
+                // Comprobar si el ejercicio ha sido actualizado después de la última actualización de página
+                if (updateTimestamp > lastPageUpdateTime) {
+                    try {
+                        const pageUpdateDate = new Date(lastPageUpdateTime);
+                        const updateDate = new Date(updateTimestamp);
+                        console.log(`Ejercicio ${exercise.id} actualizado después de la última actualización de página`);
+                        console.log(`Timestamp de última actualización: ${pageUpdateDate.toISOString()} (UTC) / ${pageUpdateDate.toLocaleString()} (hora local)`);
+                        console.log(`Timestamp de actualización: ${updateDate.toISOString()} (UTC) / ${updateDate.toLocaleString()} (hora local)`);
+                        console.log(`Diferencia: ${updateTimestamp - lastPageUpdateTime} ms`);
+                        hasUpdatedExercises = true;
+                    } catch (err) {
+                        console.log(`Error al mostrar información de actualización post-carga para ejercicio ${exercise.id}:`, err);
+                    }
+                }
+            }
+        }
+        
+        // Solo recargar si hay cambios en la lista de ejercicios
+        if (hasNewExercises || hasRemovedExercises || hasUpdatedExercises) {
+            console.log('Cambios significativos detectados:');
+            if (hasNewExercises) console.log('- Nuevos ejercicios añadidos');
+            if (hasRemovedExercises) console.log('- Ejercicios eliminados');
+            if (hasUpdatedExercises) console.log('- Ejercicios actualizados');
+            
+            console.log('Recargando página...');
+            // Actualizar el timestamp de la última actualización de página
+            localStorage.setItem('lastPageUpdate', Date.now().toString());
+            
+            // Usar setTimeout para evitar múltiples recargas en sucesión rápida
+            // (debounce básico)
+            if (!window.reloadTimeout) {
+                window.reloadTimeout = setTimeout(() => {
+                    // Forzar recarga completa desde el servidor, no desde caché
+                    window.location.href = window.location.href + '?t=' + Date.now();
+                    window.reloadTimeout = undefined;
+                }, 1000);
+            }
+        } else {
+            console.log('No hay cambios significativos en la lista de ejercicios');
+        }
     }
     
     // Esperar a que el DOM esté completamente cargado
@@ -98,10 +304,15 @@ const sortedExercises = [...exercises].sort((a, b) =>
         // Configurar los botones de eliminar
         setupDeleteButtons();
         
+        // Inicializar o actualizar el timestamp de la última actualización de página
+        localStorage.setItem('lastPageUpdate', Date.now().toString());
+        
+        // Suscribirse a cambios en tiempo real
+        console.log('Iniciando suscripción a cambios en ejercicios...');
         // Suscribirse a cambios en tiempo real pero sin recargar la página
         const unsubscribe = subscribeToExercises(updateExerciseList);
         
-        // Limpiar la suscripción cuando se desmonte el componente
+        // Limpiar la suscripción cuando se desmonte
         window.addEventListener('beforeunload', () => {
             if (unsubscribe) unsubscribe();
         });

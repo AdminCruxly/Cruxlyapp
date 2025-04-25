@@ -7,7 +7,8 @@ export interface Exercise {
     material: string[];
     duration: number | null;
     series: number | null;
-    restTime: string | null;
+    seriesRestTime: string | null;
+    repetitionsRestTime: string | null;
     repetitions: number | null;
     repetitionTime: string | null;
     level: 'beginner' | 'intermediate' | 'advanced' | 'all';
