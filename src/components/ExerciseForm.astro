@@ -3,7 +3,7 @@ import TagInput from './TagInput.astro';
 import type { Exercise } from '../types/Exercise';
 
 interface Props {
-    exercise?: Exercise;
+    exercise?: Exercise | null;
     isEditing?: boolean;
 }
 
@@ -129,9 +129,10 @@ const { exercise, isEditing = false } = Astro.props;
             <label for="level">Nivel</label>
             <select id="level" name="level" required>
                 <option value="">Selecciona un nivel</option>
-                <option value="beginner" selected={exercise?.level === 'beginner'}>Principiante</option>
+                <option value="beginner" selected={exercise?.level === 'beginner'}>Básico</option>
                 <option value="intermediate" selected={exercise?.level === 'intermediate'}>Intermedio</option>
                 <option value="advanced" selected={exercise?.level === 'advanced'}>Avanzado</option>
+                <option value="all" selected={exercise?.level === 'all'}>Todos los niveles</option>
             </select>
         </div>
     </div>
@@ -190,7 +191,7 @@ const { exercise, isEditing = false } = Astro.props;
             const id = await saveExercise(exerciseData as Exercise);
             
             if (id) {
-                window.location.href = '/';
+                window.location.href = '/exercise-list';
             }
         } catch (error) {
             if (error instanceof Error) {

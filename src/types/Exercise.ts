@@ -10,6 +10,6 @@ export interface Exercise {
     restTime: string | null;
     repetitions: number | null;
     repetitionTime: string | null;
-    level: 'beginner' | 'intermediate' | 'advanced';
+    level: 'beginner' | 'intermediate' | 'advanced' | 'all';
     isVisible: boolean;
 }

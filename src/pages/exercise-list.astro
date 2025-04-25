@@ -2,17 +2,24 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ExerciseCard from '../components/ExerciseCard.astro';
 import { getAllExercises } from '../services/exerciseService';
+import type { Exercise } from '../types/Exercise';
 
+// Obtener los ejercicios en el servidor
 const exercises = await getAllExercises();
+
+// Ordenar los ejercicios alfabéticamente por título
+const sortedExercises = [...exercises].sort((a, b) => 
+    ((a.title || '') + '').localeCompare(((b.title || '') + ''))
+);
 ---
 
 <BaseLayout title="Lista de Ejercicios - Crusxly Admin">
-    <div class="container">
+    <div class="exercise-container">
         <header class="page-header">
             <div class="header-content">
                 <h1>Lista de Ejercicios</h1>
                 <a href="/add-exercise" class="add-button">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="icon">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                     Añadir Ejercicio
@@ -23,34 +30,86 @@ const exercises = await getAllExercises();
             </a>
         </header>
 
-        {exercises.length === 0 ? (
-            <div class="empty-state">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <h2>No hay ejercicios</h2>
-                <p>Comienza añadiendo tu primer ejercicio</p>
-                <a href="/add-exercise" class="add-button">Añadir Ejercicio</a>
-            </div>
-        ) : (
-            <div class="exercise-grid">
-                {exercises
-                    .sort((a, b) => a.title.localeCompare(b.title))
-                    .map((exercise) => (
-                    <ExerciseCard
-                        id={exercise.id}
-                        title={exercise.title}
-                        description={exercise.description}
-                        category={exercise.category}
-                    />
-                ))}
-            </div>
-        )}
+        <div id="exercise-list-container">
+            {exercises.length === 0 ? (
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="empty-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <p>Comienza añadiendo tu primer ejercicio</p>
+                    <a href="/add-exercise" class="add-button">Añadir Ejercicio</a>
+                </div>
+            ) : (
+                <div class="exercise-grid">
+                    {sortedExercises.map((exercise) => (
+                        <ExerciseCard 
+                            id={exercise.id} 
+                            title={exercise.title || 'Sin título'} 
+                            description={exercise.description || 'Sin descripción'} 
+                            category={exercise.category || 'Sin categoría'} 
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
     </div>
 </BaseLayout>
 
+<script>
+    import { deleteExercise, subscribeToExercises } from '../services/exerciseService';
+    import type { Exercise } from '../types/Exercise';
+    
+    // Configurar los botones de eliminar
+    function setupDeleteButtons(): void {
+        document.querySelectorAll('.action-button.delete').forEach(button => {
+            button.addEventListener('click', async (event) => {
+                event.preventDefault();
+                const deleteButton = event.currentTarget as HTMLButtonElement;
+                const id = deleteButton.getAttribute('data-id');
+                if (id && confirm('¿Estás seguro de que deseas eliminar este ejercicio?')) {
+                    try {
+                        await deleteExercise(id);
+                        console.log('Ejercicio eliminado con éxito');
+                        // Eliminar la tarjeta del DOM en lugar de recargar la página
+                        const card = deleteButton.closest('.exercise-card');
+                        if (card && card.parentElement) {
+                            card.parentElement.removeChild(card);
+                        }
+                    } catch (error) {
+                        console.error('Error al eliminar el ejercicio:', error);
+                        alert('Error al eliminar el ejercicio. Por favor, inténtalo de nuevo.');
+                    }
+                }
+            });
+        });
+    }
+    
+    // Función para actualizar la UI con los nuevos ejercicios
+    function updateExerciseList(exercises: Exercise[]): void {
+        // Solo actualizar si hay cambios significativos
+        // Esta implementación básica evita recargas constantes
+        console.log('Cambios detectados en los ejercicios');
+        // Aquí podrías implementar una actualización más sofisticada
+        // sin necesidad de recargar la página
+    }
+    
+    // Esperar a que el DOM esté completamente cargado
+    document.addEventListener('DOMContentLoaded', () => {
+        // Configurar los botones de eliminar
+        setupDeleteButtons();
+        
+        // Suscribirse a cambios en tiempo real pero sin recargar la página
+        const unsubscribe = subscribeToExercises(updateExerciseList);
+        
+        // Limpiar la suscripción cuando se desmonte el componente
+        window.addEventListener('beforeunload', () => {
+            if (unsubscribe) unsubscribe();
+        });
+    });
+</script>
+
 <style>
-    .container {
+    .exercise-container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 2rem;
@@ -83,32 +142,31 @@ const exercises = await getAllExercises();
         border-radius: 0.5rem;
         color: var(--text-color);
         text-decoration: none;
-        transition: all 0.2s ease;
-        font-size: 0.875rem;
     }
 
     .back-button:hover {
-        background-color: var(--border-color);
+        background-color: var(--hover-color);
     }
 
     .add-button {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
+        padding: 0.5rem 1rem;
         background-color: var(--primary-color);
-        color: white;
+        border: none;
         border-radius: 0.5rem;
-        text-decoration: none;
-        transition: all 0.2s ease;
+        color: white;
         font-weight: 500;
+        text-decoration: none;
+        transition: background-color 0.2s ease;
     }
 
     .add-button:hover {
         background-color: var(--primary-hover);
     }
 
-    .add-button svg {
+    .icon {
         width: 1.25rem;
         height: 1.25rem;
     }
@@ -116,56 +174,42 @@ const exercises = await getAllExercises();
     .exercise-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 2rem;
-        margin-top: 2rem;
+        gap: 1.5rem;
     }
 
-    .empty-state {
+    .empty-state,
+    .error-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
         text-align: center;
-        padding: 4rem 2rem;
-        background: white;
+        background-color: white;
         border-radius: 1rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid var(--border-color);
     }
 
-    .empty-state svg {
+    .empty-icon,
+    .error-icon {
         width: 4rem;
         height: 4rem;
-        color: var(--primary-color);
-        margin-bottom: 1.5rem;
-    }
-
-    .empty-state h2 {
-        font-size: 1.5rem;
         color: var(--text-color);
-        margin: 0 0 0.5rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
     }
 
-    .empty-state p {
-        color: var(--text-color);
-        opacity: 0.8;
-        margin: 0 0 2rem;
+    .reload-button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
     }
 
-    @media (max-width: 640px) {
-        .container {
-            padding: 1rem;
-        }
-
-        .exercise-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .header-content {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .add-button {
-            width: 100%;
-            justify-content: center;
-        }
+    .reload-button:hover {
+        background-color: var(--primary-hover);
     }
 </style>

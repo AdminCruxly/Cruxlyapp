@@ -1,12 +1,20 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  output: 'server',
+  output: 'static',
   vite: {
     build: {
       rollupOptions: {
-        external: ['firebase/app', 'firebase/firestore']
+        output: {
+          format: 'esm'
+        }
       }
+    },
+    optimizeDeps: {
+      include: ['firebase/app', 'firebase/firestore', 'firebase/analytics']
+    },
+    ssr: {
+      noExternal: ['firebase']
     }
   }
 });

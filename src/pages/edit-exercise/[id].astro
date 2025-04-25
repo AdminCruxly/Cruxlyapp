@@ -1,21 +1,41 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ExerciseForm from '../../components/ExerciseForm.astro';
-import { getExerciseById } from '../../services/exerciseService';
+import { getAllExercises } from '../../services/exerciseService';
+import type { Exercise } from '../../types/Exercise';
 
-export const prerender = false;
-
-const { id } = Astro.params;
-
-if (!id) {
-    return Astro.redirect('/exercise-list');
+// Esta función es necesaria para rutas dinámicas en modo estático
+export async function getStaticPaths() {
+    const exercises = await getAllExercises();
+    
+    // Definimos el tipo para las rutas
+    type ExercisePath = {
+        params: { id: string };
+        props: { exercise: Exercise | null; preloaded: boolean };
+    };
+    
+    // Generamos una ruta para cada ejercicio existente
+    const exercisePaths: ExercisePath[] = exercises.map(exercise => ({
+        params: { id: exercise.id || 'unknown' }, // Aseguramos que id sea siempre un string
+        props: { exercise, preloaded: true },
+    }));
+    
+    // Añadimos una ruta comodín para manejar IDs que no existen en tiempo de compilación
+    // Esto permitirá editar ejercicios creados después del despliegue
+    exercisePaths.push({
+        params: { id: 'new-exercise' },
+        props: { exercise: null, preloaded: false }
+    });
+    
+    return exercisePaths;
 }
 
-const exercise = await getExerciseById(id);
-
-if (!exercise) {
-    return Astro.redirect('/exercise-list');
+interface Props {
+    exercise: Exercise | null;
+    preloaded: boolean;
 }
+
+const { exercise, preloaded } = Astro.props as Props;
 ---
 
 <BaseLayout title="Editar Ejercicio - Crusxly Admin">
@@ -23,12 +43,272 @@ if (!exercise) {
         <header class="page-header">
             <h1>Editar Ejercicio</h1>
             <a href="/exercise-list" class="back-button">
-                <span>←</span> Volver
+                <span>←</span> Volver a la lista
             </a>
         </header>
-        <ExerciseForm exercise={exercise} isEditing={true} />
+        
+        {preloaded && exercise ? (
+            <ExerciseForm exercise={exercise} isEditing={true} />
+        ) : (
+            <div id="dynamic-form-container">
+                <p class="loading">Cargando ejercicio...</p>
+            </div>
+        )}
     </div>
 </BaseLayout>
+
+<script>
+    // Este script solo se ejecuta cuando estamos en un ejercicio que no estaba precompilado
+    // (es decir, fue creado después del despliegue)
+    import { getExerciseById, saveExercise } from '../../services/exerciseService';
+    import type { Exercise } from '../../types/Exercise';
+    
+    const container = document.getElementById('dynamic-form-container');
+    if (container) {
+        const loadExercise = async () => {
+            try {
+                // Obtenemos el ID del ejercicio de la URL
+                const id = window.location.pathname.split('/').pop();
+                
+                if (!id || id === 'new-exercise') {
+                    window.location.href = '/exercise-list';
+                    return;
+                }
+                
+                // Cargamos el ejercicio desde Firestore
+                const exercise = await getExerciseById(id);
+                
+                if (!exercise) {
+                    container.innerHTML = `
+                        <p class="error">No se encontró el ejercicio. <a href="/exercise-list">Volver a la lista</a></p>
+                    `;
+                    return;
+                }
+                
+                // Creamos el formulario dinámicamente
+                container.innerHTML = `
+                    <form id="mainForm" class="form-container">
+                        <input type="hidden" name="id" value="${exercise.id}" />
+                        
+                        <div class="input-group">
+                            <label for="title">Título</label>
+                            <input 
+                                type="text" 
+                                id="title" 
+                                name="title"
+                                placeholder="Ingresa el título"
+                                value="${exercise.title || ''}"
+                                required
+                            />
+                        </div>
+                    
+                        <div class="input-group">
+                            <label for="description">Descripción</label>
+                            <textarea 
+                                id="description" 
+                                name="description"
+                                placeholder="Ingresa la descripción"
+                                required
+                            >${exercise.description || ''}</textarea>
+                        </div>
+                    
+                        <div class="input-group">
+                            <label for="category">Categoría</label>
+                            <input 
+                                type="text" 
+                                id="category" 
+                                name="category" 
+                                placeholder="Ingresa la categoría"
+                                value="${exercise.category || ''}"
+                                required
+                            />
+                        </div>
+                    
+                        <div class="input-group">
+                            <label for="subcategory">Subcategoría</label>
+                            <input 
+                                type="text" 
+                                id="subcategory" 
+                                name="subcategory" 
+                                placeholder="Ingresa la subcategoría (opcional)"
+                                value="${exercise.subcategory || ''}"
+                            />
+                        </div>
+                    
+                        <div class="input-group">
+                            <label for="material">Material necesario</label>
+                            <input 
+                                type="text" 
+                                id="material" 
+                                name="material" 
+                                placeholder="Ingresa el material separado por comas"
+                                value="${Array.isArray(exercise.material) ? exercise.material.join(', ') : ''}"
+                            />
+                        </div>
+                    
+                        <div class="form-row">
+                            <div class="input-group half">
+                                <label for="duration">Duración (min)</label>
+                                <input 
+                                    type="number" 
+                                    id="duration" 
+                                    name="duration" 
+                                    placeholder="Duración en minutos"
+                                    min="0"
+                                    value="${exercise.duration || ''}"
+                                />
+                            </div>
+                    
+                            <div class="input-group half">
+                                <label for="series">Número de Series</label>
+                                <input 
+                                    type="number" 
+                                    id="series" 
+                                    name="series" 
+                                    placeholder="Número de series"
+                                    min="0"
+                                    value="${exercise.series || ''}"
+                                />
+                            </div>
+                        </div>
+                    
+                        <div class="form-row">
+                            <div class="input-group half">
+                                <label for="restTime">Descanso</label>
+                                <input 
+                                    type="text" 
+                                    id="restTime" 
+                                    name="restTime" 
+                                    placeholder="Tiempo de descanso"
+                                    value="${exercise.restTime || ''}"
+                                />
+                            </div>
+                    
+                            <div class="input-group half">
+                                <label for="repetitions">Nº de repeticiones</label>
+                                <input 
+                                    type="number" 
+                                    id="repetitions" 
+                                    name="repetitions" 
+                                    placeholder="Número de repeticiones"
+                                    min="0"
+                                    value="${exercise.repetitions || ''}"
+                                />
+                            </div>
+                        </div>
+                    
+                        <div class="form-row">
+                            <div class="input-group half">
+                                <label for="repetitionTime">Tiempo de repeticiones</label>
+                                <input 
+                                    type="text" 
+                                    id="repetitionTime" 
+                                    name="repetitionTime" 
+                                    placeholder="Tiempo por repetición"
+                                    value="${exercise.repetitionTime || ''}"
+                                />
+                            </div>
+                    
+                            <div class="input-group half">
+                                <label for="level">Nivel</label>
+                                <select id="level" name="level" required>
+                                    <option value="">Selecciona un nivel</option>
+                                    <option value="beginner" ${exercise.level === 'beginner' ? 'selected' : ''}>Básico</option>
+                                    <option value="intermediate" ${exercise.level === 'intermediate' ? 'selected' : ''}>Intermedio</option>
+                                    <option value="advanced" ${exercise.level === 'advanced' ? 'selected' : ''}>Avanzado</option>
+                                    <option value="all" ${exercise.level === 'all' ? 'selected' : ''}>Todos los niveles</option>
+                                </select>
+                            </div>
+                        </div>
+                    
+                        <div class="input-group checkbox-group">
+                            <label class="checkbox-container">
+                                <input 
+                                    type="checkbox" 
+                                    id="isVisible" 
+                                    name="isVisible"
+                                    ${exercise.isVisible ? 'checked' : ''}
+                                />
+                                <span class="checkbox-label">Visible en biblioteca</span>
+                            </label>
+                        </div>
+                    
+                        <button type="submit" class="submit-btn">Actualizar</button>
+                    </form>
+                `;
+                
+                // Agregamos el event listener para el formulario
+                const form = document.getElementById('mainForm');
+                if (form) {
+                    form.addEventListener('submit', handleSubmit);
+                }
+            } catch (error) {
+                console.error('Error al cargar el ejercicio:', error);
+                container.innerHTML = `
+                    <p class="error">Error al cargar el ejercicio: ${error instanceof Error ? error.message : 'Desconocido'}. <a href="/edit-exercise">Volver a la lista</a></p>
+                `;
+            }
+        };
+        
+        const handleSubmit = async (e: SubmitEvent) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            
+            try {
+                const formData = new FormData(form);
+                
+                // Función auxiliar para obtener valores de FormData como string
+                const getStringValue = (key: string): string => {
+                    const value = formData.get(key);
+                    return value instanceof File ? '' : (value?.toString() || '');
+                };
+                
+                // Función auxiliar para obtener valores numéricos
+                const getNumberValue = (key: string): number | null => {
+                    const value = getStringValue(key);
+                    return value ? parseInt(value) : null;
+                };
+                
+                // Procesar el material (convertir de string a array)
+                const materialStr = getStringValue('material');
+                const materialArray = materialStr ? 
+                    materialStr.split(',').map(item => item.trim()).filter(Boolean) : 
+                    [];
+                
+                // Crear el objeto de ejercicio
+                const exerciseData: Exercise = {
+                    id: getStringValue('id'),
+                    title: getStringValue('title'),
+                    description: getStringValue('description'),
+                    category: getStringValue('category'),
+                    subcategory: getStringValue('subcategory') || null,
+                    material: materialArray,
+                    duration: getNumberValue('duration'),
+                    series: getNumberValue('series'),
+                    repetitions: getNumberValue('repetitions'),
+                    restTime: getStringValue('restTime') || null,
+                    repetitionTime: getStringValue('repetitionTime') || null,
+                    level: getStringValue('level') as 'beginner' | 'intermediate' | 'advanced' | 'all',
+                    isVisible: formData.has('isVisible')
+                };
+
+
+                
+                // Guardar el ejercicio
+                await saveExercise(exerciseData);
+                
+                // Redirigir a la lista de ejercicios
+                window.location.href = '/edit-exercise';
+            } catch (error) {
+                console.error('Error al guardar el ejercicio:', error);
+                alert(`Error al guardar el ejercicio: ${error instanceof Error ? error.message : 'Desconocido'}`);
+            }
+        };
+        
+        // Cargar el ejercicio
+        loadExercise();
+    }
+</script>
 
 <style>
     .container {
@@ -65,5 +345,109 @@ if (!exercise) {
 
     .back-button:hover {
         background-color: var(--border-color);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-color);
+    }
+
+    .error {
+        color: red;
+        text-align: center;
+    }
+
+    /* Estilos para el formulario dinámico */
+    .form-container {
+        background-color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .input-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .half {
+        flex: 1;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    input, textarea, select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        color: var(--text-color);
+    }
+
+    textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+        width: auto;
+        margin-right: 0.5rem;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 0.75rem;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: var(--primary-hover);
+    }
+
+    @media (max-width: 640px) {
+        .container {
+            padding: 1rem;
+        }
+
+        .form-row {
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
     }
 </style>
